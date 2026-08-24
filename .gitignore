@@ -1,0 +1,25 @@
+# ==========================================
+# VISUALSELLER FASHION
+# Arquivos que NÃO devem ir para o GitHub
+# ==========================================
+
+# Secrets / API keys
+.env
+.env.*
+!.env.example
+
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Generated outputs
+outputs/
+
+# IDE / OS
+.vscode/
+.DS_Store
+Thumbs.db
