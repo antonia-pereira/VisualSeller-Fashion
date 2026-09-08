@@ -3,15 +3,30 @@ from typing import Any
 
 from aura.question_planner import (
     planejar_perguntas,
+    planejar_perguntas_por_objetivo,
 )
 
 from aura.gap_analyzer import (
     obter_status_ficha,
 )
 
+from aura.evidence import (
+    FonteEvidencia,
+    criar_evidencia,
+    converter_evidencia_para_ficha,
+)
+
+from aura.ficha_manager import (
+    aplicar_conhecimento_na_ficha_v2,
+)
+
 from aura_schemas.body import (
     FichaBody,
     GradeTamanho,
+)
+
+from aura_schemas.body_v2 import (
+    FichaBodyV2,
 )
 
 
@@ -134,7 +149,6 @@ def interpretar_sim_nao(
         .lower()
     )
 
-
     negativos = [
         "não",
         "nao",
@@ -145,7 +159,6 @@ def interpretar_sim_nao(
         "sem bojo",
     ]
 
-
     positivos = [
         "sim",
         "possui",
@@ -153,13 +166,11 @@ def interpretar_sim_nao(
         "com bojo",
     ]
 
-
     for termo in negativos:
 
         if termo in resposta:
 
             return False
-
 
     for termo in positivos:
 
@@ -167,12 +178,11 @@ def interpretar_sim_nao(
 
             return True
 
-
     return None
 
 
 # ============================================================
-# 6. PROCESSAR IDENTIDADE COMERCIAL
+# 6. PROCESSAR IDENTIDADE COMERCIAL — V1
 # ============================================================
 
 def processar_identidade_comercial(
@@ -264,7 +274,7 @@ def processar_identidade_comercial(
 
 
 # ============================================================
-# 7. PROCESSAR ESTOQUE
+# 7. PROCESSAR ESTOQUE — V1
 # ============================================================
 
 def processar_estoque(
@@ -276,16 +286,7 @@ def processar_estoque(
 
     P 8, M 10, G 11, GG 15
 
-    e gera:
-
-    grade:
-        P → 8
-        M → 10
-        G → 11
-        GG → 15
-
-    quantidade_total:
-        44
+    e gera uma grade e a quantidade total.
     """
 
     pares = re.findall(
@@ -295,11 +296,9 @@ def processar_estoque(
         resposta.upper(),
     )
 
-
     grade = []
 
     quantidade_total = 0
-
 
     for tamanho, quantidade in pares:
 
@@ -318,9 +317,7 @@ def processar_estoque(
             quantidade_int
         )
 
-
     campos_atualizados = []
-
 
     if grade:
 
@@ -329,7 +326,6 @@ def processar_estoque(
         campos_atualizados.append(
             "grade"
         )
-
 
         ficha.quantidade_total = (
             quantidade_total
@@ -366,7 +362,7 @@ def processar_estoque(
 
 
 # ============================================================
-# 8. PROCESSAR ESTRUTURA
+# 8. PROCESSAR ESTRUTURA — V1
 # ============================================================
 
 def processar_estrutura(
@@ -383,7 +379,6 @@ def processar_estrutura(
     )
 
     atualizados = []
-
 
     if possui_bojo is not None:
 
@@ -409,7 +404,7 @@ def processar_estrutura(
 
 
 # ============================================================
-# 9. PROCESSAR RESPOSTA DA AURA
+# 9. PROCESSAR RESPOSTA DO USUÁRIO — V1
 # ============================================================
 
 def processar_resposta_usuario(
@@ -464,7 +459,7 @@ def processar_resposta_usuario(
 
 
 # ============================================================
-# 10. OBTER PRÓXIMA PERGUNTA
+# 10. OBTER PRÓXIMA PERGUNTA — V1
 # ============================================================
 
 def obter_proxima_pergunta(
@@ -482,17 +477,15 @@ def obter_proxima_pergunta(
         ficha
     )
 
-
     if not plano:
 
         return None
-
 
     return plano[0]
 
 
 # ============================================================
-# 11. VERIFICAR SE A CONVERSA TERMINOU
+# 11. VERIFICAR SE A CONVERSA TERMINOU — V1
 # ============================================================
 
 def conversa_concluida(
@@ -512,7 +505,7 @@ def conversa_concluida(
 
 
 # ============================================================
-# 12. RESUMO DA CONVERSA
+# 12. RESUMO DA CONVERSA — V1
 # ============================================================
 
 def obter_resumo_conversa(
@@ -541,3 +534,527 @@ def obter_resumo_conversa(
         "proxima_pergunta":
             proxima,
     }
+
+
+# ============================================================
+# 13. CAMPOS BOOLEANOS — V2
+# ============================================================
+#
+# Quando a pergunta técnica exigir uma resposta booleana,
+# a conversa pode reutilizar interpretar_sim_nao().
+#
+# Os demais campos permanecem como texto informado
+# pelo usuário.
+# ============================================================
+
+CAMPOS_BOOLEANOS_V2 = {
+    "possui_bojo",
+    "possui_aro",
+    "possui_forro",
+    "possui_fechamento_entrepernas",
+}
+
+
+# ============================================================
+# 14. INTERPRETAR VALOR DA RESPOSTA — V2
+# ============================================================
+
+def interpretar_valor_resposta_v2(
+    campo: str,
+    resposta: str,
+) -> dict[str, Any]:
+    """
+    Interpreta o valor informado pelo usuário
+    antes da criação da evidência.
+
+    O conversation_manager pode interpretar
+    a linguagem da resposta, mas não decide
+    o status da evidência.
+
+    Essa responsabilidade permanece no
+    evidence.py.
+    """
+
+    resposta_limpa = limpar_texto(
+        resposta
+    )
+
+
+    # --------------------------------------------------------
+    # RESPOSTA VAZIA
+    # --------------------------------------------------------
+
+    if not resposta_limpa:
+
+        return {
+            "sucesso": False,
+            "campo": campo,
+            "valor": None,
+            "motivo": "RESPOSTA_VAZIA",
+        }
+
+
+    # --------------------------------------------------------
+    # CAMPOS BOOLEANOS
+    # --------------------------------------------------------
+
+    if campo in CAMPOS_BOOLEANOS_V2:
+
+        valor_booleano = interpretar_sim_nao(
+            resposta_limpa
+        )
+
+        if valor_booleano is None:
+
+            return {
+                "sucesso": False,
+                "campo": campo,
+                "valor": None,
+                "motivo": "RESPOSTA_NAO_INTERPRETADA",
+            }
+
+        return {
+            "sucesso": True,
+            "campo": campo,
+            "valor": valor_booleano,
+            "motivo": None,
+        }
+
+
+    # --------------------------------------------------------
+    # CAMPOS TEXTUAIS
+    # --------------------------------------------------------
+
+    return {
+        "sucesso": True,
+        "campo": campo,
+        "valor": resposta_limpa,
+        "motivo": None,
+    }
+
+
+# ============================================================
+# 15. PROCESSAR RESPOSTA DO USUÁRIO — V2
+# ============================================================
+
+def processar_resposta_usuario_v2(
+    ficha: FichaBodyV2,
+    campo: str,
+    resposta: str,
+    objetivo: str,
+) -> dict[str, Any]:
+    """
+    Processa a resposta do usuário para um
+    bloqueador específico da FichaBodyV2.
+
+    Fluxo:
+
+    resposta do usuário
+        ↓
+    interpretação
+        ↓
+    Evidencia
+        ↓
+    INFORMACAO_FORNECIDA
+        ↓
+    evidence.py determina o status
+        ↓
+    ficha_manager registra
+        ↓
+    objetivo é reavaliado
+    """
+
+    # --------------------------------------------------------
+    # CAMPO EXISTE?
+    # --------------------------------------------------------
+
+    if campo not in ficha.__class__.model_fields:
+
+        return {
+            "sucesso": False,
+            "campo": campo,
+            "objetivo": objetivo,
+            "motivo": "CAMPO_NAO_EXISTE_NA_FICHA",
+        }
+
+
+    # --------------------------------------------------------
+    # INTERPRETAR RESPOSTA
+    # --------------------------------------------------------
+
+    interpretacao = interpretar_valor_resposta_v2(
+        campo=campo,
+        resposta=resposta,
+    )
+
+
+    if not interpretacao[
+        "sucesso"
+    ]:
+
+        return {
+            "sucesso": False,
+            "campo": campo,
+            "objetivo": objetivo,
+            "motivo": interpretacao[
+                "motivo"
+            ],
+        }
+
+
+    valor = interpretacao[
+        "valor"
+    ]
+
+
+    # --------------------------------------------------------
+    # CRIAR EVIDÊNCIA
+    # --------------------------------------------------------
+    #
+    # A resposta veio diretamente do usuário.
+    #
+    # Não marcamos CONFIRMADO manualmente.
+    # O evidence.py determinará:
+    #
+    # INFORMADO_PELO_USUARIO
+    # --------------------------------------------------------
+
+    evidencia = criar_evidencia(
+        campo=campo,
+        valor=valor,
+        fonte=FonteEvidencia.INFORMACAO_FORNECIDA,
+        descricao=(
+            "Informação fornecida pelo usuário "
+            "durante a conversa com a AURA."
+        ),
+    )
+
+
+    # --------------------------------------------------------
+    # CONVERTER PARA O FORMATO DA FICHA V2
+    # --------------------------------------------------------
+
+    conhecimento_campo = (
+        converter_evidencia_para_ficha(
+            evidencia
+        )
+    )
+
+
+    conhecimento = {
+        campo:
+            conhecimento_campo
+    }
+
+
+    # --------------------------------------------------------
+    # ATUALIZAR FICHA
+    # --------------------------------------------------------
+
+    resultado_preenchimento = (
+        aplicar_conhecimento_na_ficha_v2(
+            ficha=ficha,
+            conhecimento=conhecimento,
+        )
+    )
+
+
+    if resultado_preenchimento[
+        "quantidade_erros"
+    ] > 0:
+
+        return {
+            "sucesso": False,
+            "campo": campo,
+            "objetivo": objetivo,
+            "motivo": "ERRO_AO_ATUALIZAR_FICHA",
+            "erros": resultado_preenchimento[
+                "erros"
+            ],
+        }
+
+
+    # --------------------------------------------------------
+    # REAVALIAR OBJETIVO
+    # --------------------------------------------------------
+
+    plano_atualizado = (
+        planejar_perguntas_por_objetivo(
+            ficha=ficha,
+            objetivo=objetivo,
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # RETORNAR RESULTADO
+    # --------------------------------------------------------
+
+    return {
+        "sucesso": True,
+
+        "campo":
+            campo,
+
+        "valor":
+            valor,
+
+        "fonte":
+            conhecimento_campo[
+                "fonte"
+            ],
+
+        "status":
+            conhecimento_campo[
+                "status"
+            ].value,
+
+        "objetivo":
+            objetivo,
+
+        "pode_continuar":
+            plano_atualizado[
+                "pode_continuar"
+            ],
+
+        "quantidade_bloqueadores":
+            len(
+                plano_atualizado[
+                    "bloqueadores"
+                ]
+            ),
+
+        "quantidade_perguntas":
+            plano_atualizado[
+                "quantidade_perguntas"
+            ],
+
+        "proxima_pergunta":
+            (
+                plano_atualizado[
+                    "perguntas"
+                ][0]
+                if plano_atualizado[
+                    "perguntas"
+                ]
+                else None
+            ),
+
+        "plano":
+            plano_atualizado,
+    }
+
+
+# ============================================================
+# 16. OBTER PRÓXIMA PERGUNTA — V2
+# ============================================================
+
+def obter_proxima_pergunta_v2(
+    ficha: FichaBodyV2,
+    objetivo: str,
+):
+    """
+    Retorna somente a próxima pergunta
+    necessária para o objetivo atual.
+
+    Quando não houver bloqueadores que
+    exijam perguntas, retorna None.
+    """
+
+    plano = planejar_perguntas_por_objetivo(
+        ficha=ficha,
+        objetivo=objetivo,
+    )
+
+    perguntas = plano[
+        "perguntas"
+    ]
+
+    if not perguntas:
+
+        return None
+
+    return perguntas[0]
+
+
+# ============================================================
+# 17. VERIFICAR SE A CONVERSA TERMINOU — V2
+# ============================================================
+
+def conversa_concluida_v2(
+    ficha: FichaBodyV2,
+    objetivo: str,
+) -> bool:
+    """
+    Na V2, a conversa termina quando
+    o objetivo atual não possui mais
+    bloqueadores.
+    """
+
+    plano = planejar_perguntas_por_objetivo(
+        ficha=ficha,
+        objetivo=objetivo,
+    )
+
+    return plano[
+        "pode_continuar"
+    ]
+
+
+# ============================================================
+# 18. RESUMO DA CONVERSA — V2
+# ============================================================
+
+def obter_resumo_conversa_v2(
+    ficha: FichaBodyV2,
+    objetivo: str,
+) -> dict[str, Any]:
+    """
+    Retorna a situação atual da conversa
+    orientada por objetivo.
+    """
+
+    plano = planejar_perguntas_por_objetivo(
+        ficha=ficha,
+        objetivo=objetivo,
+    )
+
+    proxima_pergunta = None
+
+    if plano[
+        "perguntas"
+    ]:
+
+        proxima_pergunta = plano[
+            "perguntas"
+        ][0]
+
+
+    return {
+        "objetivo":
+            objetivo,
+
+        "pode_continuar":
+            plano[
+                "pode_continuar"
+            ],
+
+        "conversa_concluida":
+            plano[
+                "pode_continuar"
+            ],
+
+        "quantidade_bloqueadores":
+            len(
+                plano[
+                    "bloqueadores"
+                ]
+            ),
+
+        "quantidade_perguntas":
+            plano[
+                "quantidade_perguntas"
+            ],
+
+        "proxima_pergunta":
+            proxima_pergunta,
+    }
+
+
+# ============================================================
+# 19. MOSTRAR RESUMO DA CONVERSA — V2
+# ============================================================
+
+def mostrar_resumo_conversa_v2(
+    ficha: FichaBodyV2,
+    objetivo: str,
+):
+    """
+    Exibe de forma simples o estado atual
+    da conversa da AURA para um objetivo.
+    """
+
+    resumo = obter_resumo_conversa_v2(
+        ficha=ficha,
+        objetivo=objetivo,
+    )
+
+
+    print(
+        "\n"
+        "========================================"
+    )
+
+    print(
+        "CONVERSA DA AURA — V2"
+    )
+
+    print(
+        "========================================"
+    )
+
+    print(
+        "OBJETIVO:",
+        resumo[
+            "objetivo"
+        ]
+    )
+
+    print(
+        "PODE CONTINUAR:",
+        resumo[
+            "pode_continuar"
+        ]
+    )
+
+    print(
+        "BLOQUEADORES:",
+        resumo[
+            "quantidade_bloqueadores"
+        ]
+    )
+
+    print(
+        "PERGUNTAS:",
+        resumo[
+            "quantidade_perguntas"
+        ]
+    )
+
+
+    if resumo[
+        "proxima_pergunta"
+    ]:
+
+        pergunta = resumo[
+            "proxima_pergunta"
+        ]
+
+        print(
+            "\n"
+            "PRÓXIMA PERGUNTA:"
+        )
+
+        print(
+            "CAMPO:",
+            pergunta[
+                "campo"
+            ]
+        )
+
+        print(
+            "AURA:"
+        )
+
+        print(
+            pergunta[
+                "pergunta"
+            ]
+        )
+
+    else:
+
+        print(
+            "\n"
+            "Nenhuma pergunta necessária."
+        )

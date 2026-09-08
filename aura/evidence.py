@@ -3,9 +3,17 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from aura_schemas.body_v2 import StatusEvidencia
+
 
 # ============================================================
-# TIPOS DE FONTE DE EVIDÊNCIA
+# VISUALSELLER FASHION
+# AURA — SISTEMA DE EVIDÊNCIAS
+# ============================================================
+
+
+# ============================================================
+# 1. TIPOS DE FONTE DE EVIDÊNCIA
 # ============================================================
 
 class FonteEvidencia(str, Enum):
@@ -18,7 +26,7 @@ class FonteEvidencia(str, Enum):
 
 
 # ============================================================
-# NÍVEIS DE CONFIANÇA
+# 2. NÍVEIS DE CONFIANÇA
 # ============================================================
 
 class NivelConfianca(str, Enum):
@@ -28,13 +36,21 @@ class NivelConfianca(str, Enum):
 
 
 # ============================================================
-# MODELO DE EVIDÊNCIA
+# 3. MODELO DE EVIDÊNCIA
 # ============================================================
 
 class Evidencia(BaseModel):
     """
     Representa uma evidência utilizada pela AURA
     para aceitar ou avaliar uma informação do produto.
+
+    A evidência registra:
+
+    - qual campo está sendo analisado;
+    - qual valor foi encontrado;
+    - de onde veio a informação;
+    - qual é o nível de confiança;
+    - uma descrição opcional.
     """
 
     campo: str
@@ -45,10 +61,11 @@ class Evidencia(BaseModel):
 
 
 # ============================================================
-# CONFIANÇA PADRÃO POR FONTE
+# 4. CONFIANÇA PADRÃO POR FONTE
 # ============================================================
 
 CONFIANCA_POR_FONTE = {
+
     FonteEvidencia.ETIQUETA:
         NivelConfianca.ALTA,
 
@@ -70,7 +87,7 @@ CONFIANCA_POR_FONTE = {
 
 
 # ============================================================
-# CRIAR EVIDÊNCIA
+# 5. CRIAR EVIDÊNCIA
 # ============================================================
 
 def criar_evidencia(
@@ -106,7 +123,7 @@ def criar_evidencia(
 
 
 # ============================================================
-# VERIFICAR SE A EVIDÊNCIA É FORTE
+# 6. VERIFICAR SE A EVIDÊNCIA É FORTE
 # ============================================================
 
 def evidencia_forte(
@@ -124,13 +141,15 @@ def evidencia_forte(
 
 
 # ============================================================
-# VERIFICAR SE A AURA PODE ACEITAR A INFORMAÇÃO
+# 7. VERIFICAR SE A AURA PODE ACEITAR A INFORMAÇÃO — V1
 # ============================================================
 
 def aura_pode_aceitar(
     evidencia: Evidencia,
 ) -> bool:
     """
+    Regra legada.
+
     A AURA pode aceitar automaticamente
     evidências de confiança ALTA ou MÉDIA.
 
@@ -142,3 +161,217 @@ def aura_pode_aceitar(
         NivelConfianca.ALTA,
         NivelConfianca.MEDIA,
     ]
+
+
+# ============================================================
+# 8. STATUS PADRÃO POR FONTE — V2
+# ============================================================
+#
+# Confiança e status são conceitos diferentes.
+#
+# A confiança indica a força da evidência.
+#
+# O status indica como aquela informação deve ser
+# representada dentro da ficha técnica.
+# ============================================================
+
+STATUS_POR_FONTE = {
+
+    FonteEvidencia.ETIQUETA:
+        StatusEvidencia.CONFIRMADO,
+
+    FonteEvidencia.MEDICAO_FISICA:
+        StatusEvidencia.CONFIRMADO,
+
+    FonteEvidencia.VERIFICACAO_FISICA:
+        StatusEvidencia.CONFIRMADO,
+
+    FonteEvidencia.FOTOGRAFIA:
+        StatusEvidencia.IDENTIFICADO_VISUALMENTE,
+
+    FonteEvidencia.INFORMACAO_FORNECIDA:
+        StatusEvidencia.INFORMADO_PELO_USUARIO,
+
+    FonteEvidencia.INFERENCIA_AURA:
+        StatusEvidencia.INFERIDO,
+}
+
+
+# ============================================================
+# 9. VERIFICAR SE A EVIDÊNCIA POSSUI VALOR ÚTIL — V2
+# ============================================================
+
+def evidencia_possui_valor(
+    evidencia: Evidencia,
+) -> bool:
+    """
+    Verifica se a evidência realmente possui
+    uma informação utilizável.
+
+    A existência de uma fonte não significa
+    que exista um valor técnico válido.
+    """
+
+    valor = evidencia.valor
+
+    if valor is None:
+        return False
+
+    if isinstance(
+        valor,
+        str,
+    ):
+
+        if not valor.strip():
+            return False
+
+    if isinstance(
+        valor,
+        list,
+    ):
+
+        if len(
+            valor
+        ) == 0:
+            return False
+
+    return True
+
+
+# ============================================================
+# 10. DETERMINAR STATUS DA EVIDÊNCIA — V2
+# ============================================================
+
+def determinar_status_evidencia(
+    evidencia: Evidencia,
+) -> StatusEvidencia:
+    """
+    Determina como uma evidência deve aparecer
+    na FichaBodyV2.
+
+    Regras:
+
+    - ausência de valor útil -> NAO_CONFIRMADO;
+    - etiqueta -> CONFIRMADO;
+    - medição física -> CONFIRMADO;
+    - verificação física -> CONFIRMADO;
+    - fotografia -> IDENTIFICADO_VISUALMENTE;
+    - informação fornecida -> INFORMADO_PELO_USUARIO;
+    - inferência da AURA -> INFERIDO.
+
+    A confiança continua existindo como dimensão
+    independente e não é convertida diretamente
+    em status.
+    """
+
+    if not evidencia_possui_valor(
+        evidencia
+    ):
+
+        return StatusEvidencia.NAO_CONFIRMADO
+
+    return STATUS_POR_FONTE[
+        evidencia.fonte
+    ]
+
+
+# ============================================================
+# 11. VERIFICAR SE EVIDÊNCIA EXIGE CONFIRMAÇÃO — V2
+# ============================================================
+
+def evidencia_exige_confirmacao(
+    evidencia: Evidencia,
+) -> bool:
+    """
+    Indica se a evidência ainda precisa ser
+    confirmada antes de ser tratada como
+    conhecimento aceito para objetivos que
+    exigem evidência validada.
+    """
+
+    status = determinar_status_evidencia(
+        evidencia
+    )
+
+    return status in {
+        StatusEvidencia.INFERIDO,
+        StatusEvidencia.NAO_CONFIRMADO,
+    }
+
+
+# ============================================================
+# 12. CONVERTER EVIDÊNCIA PARA CONHECIMENTO DA FICHA — V2
+# ============================================================
+
+def converter_evidencia_para_ficha(
+    evidencia: Evidencia,
+) -> dict[str, Any]:
+    """
+    Converte uma Evidencia em uma estrutura
+    compatível com aplicar_conhecimento_na_ficha_v2().
+
+    O evidence.py determina o status.
+
+    O ficha_manager.py apenas registra
+    o resultado na ficha.
+    """
+
+    status = determinar_status_evidencia(
+        evidencia
+    )
+
+    return {
+        "valor":
+            evidencia.valor,
+
+        "fonte":
+            evidencia.fonte.value,
+
+        "status":
+            status,
+    }
+
+
+# ============================================================
+# 13. DESCREVER CLASSIFICAÇÃO DA EVIDÊNCIA — V2
+# ============================================================
+
+def classificar_evidencia_v2(
+    evidencia: Evidencia,
+) -> dict[str, Any]:
+    """
+    Retorna uma visão completa da classificação
+    realizada pela AURA.
+
+    Útil para testes, auditoria e explicabilidade.
+    """
+
+    status = determinar_status_evidencia(
+        evidencia
+    )
+
+    return {
+        "campo":
+            evidencia.campo,
+
+        "valor":
+            evidencia.valor,
+
+        "fonte":
+            evidencia.fonte.value,
+
+        "confianca":
+            evidencia.confianca.value,
+
+        "status":
+            status.value,
+
+        "exige_confirmacao":
+            status in {
+                StatusEvidencia.INFERIDO,
+                StatusEvidencia.NAO_CONFIRMADO,
+            },
+
+        "descricao":
+            evidencia.descricao,
+    }
