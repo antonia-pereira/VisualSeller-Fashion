@@ -1,67 +1,114 @@
 # VisualSeller Fashion
 
-> AI-powered system for fashion product understanding and e-commerce content generation.
+> AI-powered system for fashion product understanding, structured product intelligence and e-commerce content generation.
 
 ## About the Project
 
-VisualSeller Fashion is an experimental AI project focused on applying artificial intelligence to fashion e-commerce.
+VisualSeller Fashion is an AI project focused on the intersection of fashion, e-commerce and artificial intelligence.
 
-The project explores how AI can analyze a fashion product, understand its visual and commercial characteristics, and transform that information into structured content and visual assets for digital marketplaces.
+The system explores how AI can analyze a fashion product, interpret visual and commercial information, identify missing data, structure product knowledge and support the creation of digital commerce assets.
 
-Rather than treating AI only as a content generator, the project experiments with a structured reasoning architecture in which different components are responsible for understanding, interpreting, planning, validating and generating outputs.
+Rather than using AI only as a content generator, VisualSeller Fashion experiments with a modular decision architecture designed to understand what is known, what is missing, what can be inferred and when human input is required.
 
-## Current Capabilities
+At the center of this architecture is **AURA**, the project's product-intelligence and decision layer.
 
-The current prototype includes experiments with:
+## AURA — Product Intelligence Layer
 
-- Fashion product analysis
-- Product attribute extraction
-- Product interpretation
-- Structured product data
-- Visual planning
-- AI-assisted decision flows
-- Image reference analysis
-- AI image generation
-- Multi-provider image generation architecture
-- API integration
-- Prompt construction and validation
+AURA is being developed as the reasoning and orchestration layer of VisualSeller Fashion.
 
-## AI Image Generation
+Its role is to coordinate the transformation of product information into structured and validated data before downstream e-commerce content is generated.
 
-The project currently includes an experimental image-generation pipeline capable of:
+The current AURA V2 architecture includes experiments with:
 
-1. Receiving a real fashion product image as reference
-2. Preparing structured generation instructions
-3. Sending the reference and prompt to an image-generation model
-4. Generating a commercial product image
-5. Saving the generated result locally
+- Product information management
+- Evidence classification
+- Gap detection
+- Conditional field validation
+- Decision logic
+- User-question flows
+- User-response processing
+- Conversation state
+- Structured product records
+- Objective validation
 
-The architecture is being designed to support different AI providers and models.
+The system is designed to distinguish between information that was observed, inferred or explicitly provided by the user.
+
+## Current AURA V2 Flow
+
+A simplified version of the current workflow:
+
+1. Receive available product information
+2. Evaluate the evidence associated with each field
+3. Identify missing or insufficient information
+4. Determine whether the current objective can continue
+5. Ask the user when required information cannot be safely established
+6. Process the user's response
+7. Register the information and its source
+8. Re-evaluate existing blockers
+9. Continue the objective when the required information is available
+
+This creates a more controlled AI workflow instead of relying only on free-form generation.
+
+## Example
+
+During a current prototype test, AURA identified that the garment's leg-opening finish did not have sufficient evidence.
+
+The system:
+
+- detected the information gap;
+- generated a question for the user;
+- received the answer;
+- registered the information as user-provided;
+- updated the product record;
+- removed the blocker;
+- allowed the workflow to continue.
+
+This experiment validates an important principle of the architecture:
+
+> When reliable information is unavailable, the system should request evidence instead of inventing product data.
 
 ## Project Architecture
 
-The project is organized into independent modules responsible for different stages of the product-understanding and generation process.
+VisualSeller Fashion follows a modular architecture in which different components are responsible for specific parts of the reasoning process.
 
-Examples include:
+Current modules include areas related to:
 
+- Conversation management
+- Decision logic
+- Evidence management
+- Product record management
+- Gap analysis
+- Workflow orchestration
 - Product interpretation
-- Product meaning analysis
-- Product positioning
 - Visual planning
-- Image prompt construction
-- Reference selection
+- Prompt construction
 - Image generation
-- Validation and decision logic
 
-This modular structure allows individual components to be tested and improved independently.
+This structure allows individual components to evolve and be tested independently.
+
+## AI Image Generation
+
+The project also includes experimental image-generation workflows for fashion e-commerce.
+
+The pipeline explores:
+
+1. Receiving a real fashion product image as reference
+2. Structuring generation instructions
+3. Preparing prompts and visual constraints
+4. Connecting to image-generation models
+5. Generating commercial visual assets
+6. Saving and evaluating generated results
+
+The architecture is being designed to support experimentation with different AI providers and models.
 
 ## Technologies
 
 - Python
 - Generative AI APIs
-- Multimodal AI models
+- Multimodal AI
 - Prompt Engineering
 - Structured AI workflows
+- AI decision systems
 - Image generation models
 - Gradio
 - Git / GitHub
@@ -72,31 +119,39 @@ This modular structure allows individual components to be tested and improved in
 
 VisualSeller Fashion is currently under active development.
 
-The repository documents the evolution of the project through experiments, prototypes and incremental implementations.
+The current repository represents an evolving prototype and documents the development of the AURA architecture through incremental implementations, tests and architectural experiments.
 
-Some modules are experimental and may change as the architecture evolves.
+Some modules, data structures and workflows may change as the system evolves.
 
-## Learning Goals
+The project should not currently be considered a production-ready application.
 
-This project is also part of my practical studies in AI Engineering, including:
+## Learning and Development
+
+VisualSeller Fashion is also part of my practical development in AI Engineering.
+
+Areas explored during the project include:
 
 - Python
 - APIs
 - LLMs
 - Multimodal AI
-- RAG
 - AI Agents
 - LangChain
 - LangGraph
+- RAG
+- Structured workflows
 - AI application architecture
 
-The goal is to move beyond theoretical knowledge by building and testing a real AI system.
+The project connects these technical studies with my professional background in fashion design, visual communication and e-commerce.
 
 ## Vision
 
-The long-term goal is to explore how artificial intelligence can support fashion brands and sellers in transforming product information into better digital commerce experiences.
+The long-term vision of VisualSeller Fashion is to explore how artificial intelligence can help fashion brands and sellers transform product information into structured knowledge and better digital commerce experiences.
+
+The goal is not simply to generate content, but to create an intelligent layer capable of understanding the product before deciding what should be generated.
 
 ---
 
-Developed by **Antônia Pereira**  
-Graphic Designer · AI & Generative Design
+Developed by **Antônia Pereira**
+
+Graphic Designer · Art Direction · Fashion · E-commerce · Generative AI
